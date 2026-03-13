@@ -1,0 +1,44 @@
+diff --git a/node_modules/@inngest/agent-kit/dist/chunk-BSWKEFTT.js b/node_modules/@inngest/agent-kit/dist/chunk-BSWKEFTT.js
+index 50538d4..c715e40 100644
+--- a/node_modules/@inngest/agent-kit/dist/chunk-BSWKEFTT.js
++++ b/node_modules/@inngest/agent-kit/dist/chunk-BSWKEFTT.js
+@@ -497,7 +497,7 @@ var requestParser2 = (model, messages, tools, tool_choice = "auto") => {
+           name: t.name,
+           description: t.description,
+           parameters: t.parameters && z2.toJSONSchema(t.parameters, { target: "draft-7" }),
+-          strict: typeof t.strict !== "undefined" ? t.strict : Boolean(t.parameters)
++          strict: typeof t.strict !== "undefined" ? t.strict : false
+           // strict mode is only supported with parameters
+         }
+       };
+@@ -1597,7 +1597,7 @@ var Agent = class _Agent {
+             type: "tool",
+             id: tool.id,
+             name: tool.name,
+-            input: tool.input.arguments
++            input: tool.input ? tool.input.arguments || tool.input : {}
+           },
+           content: result,
+           stop_reason: "tool"
+diff --git a/node_modules/@inngest/agent-kit/dist/index.cjs b/node_modules/@inngest/agent-kit/dist/index.cjs
+index 2ecaa90..c8e1be5 100644
+--- a/node_modules/@inngest/agent-kit/dist/index.cjs
++++ b/node_modules/@inngest/agent-kit/dist/index.cjs
+@@ -1315,7 +1315,7 @@ var requestParser2 = (model, messages, tools, tool_choice = "auto") => {
+           name: t.name,
+           description: t.description,
+           parameters: t.parameters && import_zod6.z.toJSONSchema(t.parameters, { target: "draft-7" }),
+-          strict: typeof t.strict !== "undefined" ? t.strict : Boolean(t.parameters)
++          strict: typeof t.strict !== "undefined" ? t.strict : false
+           // strict mode is only supported with parameters
+         }
+       };
+@@ -2231,7 +2231,7 @@ var Agent = class _Agent {
+             type: "tool",
+             id: tool.id,
+             name: tool.name,
+-            input: tool.input.arguments
++            input: tool.input ? tool.input.arguments || tool.input : {}
+           },
+           content: result,
+           stop_reason: "tool"

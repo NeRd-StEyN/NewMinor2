@@ -21,6 +21,7 @@ import { Doc, Id } from "../../../../convex/_generated/dataModel";
 const formSchema = z.object({
   installCommand: z.string(),
   devCommand: z.string(),
+  rootDirectory: z.string(),
 });
 
 interface PreviewSettingsPopoverProps {
@@ -41,6 +42,7 @@ export const PreviewSettingsPopover = ({
     defaultValues: {
       installCommand: initialValues?.installCommand ?? "",
       devCommand: initialValues?.devCommand ?? "",
+      rootDirectory: initialValues?.rootDirectory ?? "",
     },
     validators: {
       onSubmit: formSchema,
@@ -51,6 +53,7 @@ export const PreviewSettingsPopover = ({
         settings: {
           installCommand: value.installCommand || undefined,
           devCommand: value.devCommand || undefined,
+          rootDirectory: value.rootDirectory || undefined,
         },
       });
       setOpen(false);
@@ -63,6 +66,7 @@ export const PreviewSettingsPopover = ({
       form.reset({
         installCommand: initialValues?.installCommand ?? "",
         devCommand: initialValues?.devCommand ?? "",
+        rootDirectory: initialValues?.rootDirectory ?? "",
       });
     }
     setOpen(isOpen);
@@ -130,6 +134,24 @@ export const PreviewSettingsPopover = ({
                   />
                   <FieldDescription>
                     Command to start the development server
+                  </FieldDescription>
+                </Field>
+              )}
+            </form.Field>
+            <form.Field name="rootDirectory">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Root Directory</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="e.g. frontend"
+                  />
+                  <FieldDescription>
+                    Directory to run commands in (leave empty for auto)
                   </FieldDescription>
                 </Field>
               )}

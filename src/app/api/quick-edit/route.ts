@@ -2,9 +2,42 @@ import { z } from "zod";
 import { generateText, Output } from "ai";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { anthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 import { firecrawl } from "@/lib/firecrawl";
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+};
+
+const hasStatusCode = (error: unknown, statusCode: number) => {
+  return getErrorMessage(error).includes(`status code: ${statusCode}`);
+};
+
+const isRateLimitError = (error: unknown) => {
+  const message = getErrorMessage(error).toLowerCase();
+
+  return (
+    hasStatusCode(error, 429) ||
+    message.includes("resource_exhausted") ||
+    message.includes("quota") ||
+    message.includes("rate limit") ||
+    message.includes("rate-limiting")
+  );
+};
+
+const isOllamaEnabled = () => {
+  return (
+    process.env.OLLAMA_ENABLED === "true" ||
+    Boolean(process.env.OLLAMA_MODEL) ||
+    Boolean(process.env.OLLAMA_BASE_URL)
+  );
+};
 
 const quickEditSchema = z.object({
   editedCode: z
@@ -73,9 +106,11 @@ export async function POST(request: Request) {
       const scrapedResults = await Promise.all(
         urls.map(async (url) => {
           try {
-            const result = await firecrawl.scrape(url, {
-              formats: ["markdown"],
-            });
+            const result = firecrawl
+              ? await firecrawl.scrape(url, {
+                formats: ["markdown"],
+              })
+              : { markdown: null };
 
             if (result.markdown) {
               return `<doc url="${url}">\n${result.markdown}\n</doc>`;
@@ -101,15 +136,85 @@ export async function POST(request: Request) {
       .replace("{instruction}", instruction)
       .replace("{documentation}", documentationContext);
 
-    const { output } = await generateText({
-      model: anthropic("claude-3-7-sonnet-20250219"),
-      output: Output.object({ schema: quickEditSchema }),
-      prompt,
-    });
+    const modelCandidates: Array<{
+      provider: "groq" | "gemini" | "ollama";
+      model: Parameters<typeof generateText>[0]["model"];
+    }> = [];
 
-    return NextResponse.json({ editedCode: output.editedCode });
+    if (process.env.GROQ_API_KEY) {
+      modelCandidates.push({
+        provider: "groq",
+        model: createOpenAI({
+          apiKey: process.env.GROQ_API_KEY,
+          baseURL: "https://api.groq.com/openai/v1",
+        })("llama-3.1-8b-instant", { structuredOutputs: false }),
+      });
+    }
+
+    if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      modelCandidates.push({
+        provider: "gemini",
+        model: createGoogleGenerativeAI({
+          apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+        })("gemini-2.0-flash"),
+      });
+    }
+
+    if (isOllamaEnabled()) {
+      modelCandidates.push({
+        provider: "ollama",
+        model: createOpenAI({
+          apiKey: process.env.OLLAMA_API_KEY || "ollama",
+          baseURL: process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434/v1",
+        })(process.env.OLLAMA_MODEL || "qwen2.5-coder:1.5b", { structuredOutputs: false }),
+      });
+    }
+
+    if (modelCandidates.length === 0) {
+      return NextResponse.json(
+        { error: "No AI provider configured" },
+        { status: 500 },
+      );
+    }
+
+    let lastError: unknown;
+
+    for (const candidate of modelCandidates) {
+      try {
+        const { output } = await generateText({
+          model: candidate.model,
+          output: Output.object({ schema: quickEditSchema }),
+          prompt,
+        });
+
+        return NextResponse.json({ editedCode: output.editedCode });
+      } catch (error) {
+        lastError = error;
+        const hasFallback = modelCandidates.at(-1)?.provider !== candidate.provider;
+
+        if (hasFallback) {
+          console.warn(
+            `Quick edit provider ${candidate.provider} failed, falling back to next provider`,
+            error,
+          );
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw lastError;
   } catch (error) {
     console.error("Edit error:", error);
+
+    if (isRateLimitError(error)) {
+      return NextResponse.json(
+        { error: "AI provider is rate-limiting requests. Please retry shortly." },
+        { status: 429 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to generate edit" },
       { status: 500 }

@@ -9,6 +9,7 @@ export const updateSettings = mutation({
     settings: v.object({
       installCommand: v.optional(v.string()),
       devCommand: v.optional(v.string()),
+      rootDirectory: v.optional(v.string()),
     }),
   },
   handler: async (ctx, args) => {

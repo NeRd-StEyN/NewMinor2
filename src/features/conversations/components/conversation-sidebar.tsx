@@ -1,10 +1,9 @@
 import ky from "ky";
 import { toast } from "sonner";
 import { useState } from "react";
-import { 
-  CopyIcon, 
-  HistoryIcon, 
-  LoaderIcon, 
+import {
+  CopyIcon,
+  HistoryIcon,
   PlusIcon
 } from "lucide-react";
 
@@ -20,6 +19,11 @@ import {
   MessageActions,
   MessageAction,
 } from "@/components/ai-elements/message";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@/components/ai-elements/reasoning";
 import {
   PromptInput,
   PromptInputBody,
@@ -44,6 +48,28 @@ import { PastConversationsDialog } from "./past-conversations-dialog";
 
 interface ConversationSidebarProps {
   projectId: Id<"projects">;
+};
+
+const THINKING_START_MARKER = "<!--POLARIS_THINKING_START-->";
+const THINKING_END_MARKER = "<!--POLARIS_THINKING_END-->";
+
+const splitThinkingFromContent = (content: string) => {
+  const startIndex = content.indexOf(THINKING_START_MARKER);
+  const endIndex = content.indexOf(THINKING_END_MARKER);
+
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    return { thinking: null, response: content };
+  }
+
+  const thinking = content
+    .slice(startIndex + THINKING_START_MARKER.length, endIndex)
+    .trim();
+  const response = `${content.slice(0, startIndex)}${content.slice(endIndex + THINKING_END_MARKER.length)}`.trim();
+
+  return {
+    thinking: thinking || null,
+    response,
+  };
 };
 
 export const ConversationSidebar = ({
@@ -162,46 +188,65 @@ export const ConversationSidebar = ({
         <Conversation className="flex-1">
           <ConversationContent>
             {conversationMessages?.map((message, messageIndex) => (
-              <Message
-                key={message._id}
-                from={message.role}
-              >
-                <MessageContent>
-                  {message.status === "processing" ? (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <LoaderIcon className="size-4 animate-spin" />
-                      <span>Thinking...</span>
-                    </div>
-                  ) : message.status === "cancelled" ? (
-                    <span className="text-muted-foreground italic">
-                      Request cancelled
-                    </span>
-                  ) : (
-                    <MessageResponse>{message.content}</MessageResponse>
-                  )}
-                </MessageContent>
-                {message.role === "assistant" &&
-                  message.status === "completed" &&
-                  messageIndex === (conversationMessages?.length ?? 0) - 1 && (
-                    <MessageActions>
-                      <MessageAction
-                        onClick={() => {
-                          navigator.clipboard.writeText(message.content)
-                        }}
-                        label="Copy"
-                      >
-                        <CopyIcon className="size-3" />
-                      </MessageAction>
-                    </MessageActions>
-                  )
-                }
-              </Message>
+              (() => {
+                const parsedContent =
+                  message.role === "assistant"
+                    ? splitThinkingFromContent(message.content)
+                    : { thinking: null, response: message.content };
+
+                return (
+                  <Message
+                    key={message._id}
+                    from={message.role}
+                  >
+                    <MessageContent>
+                      {message.status === "processing" ? (
+                        <Reasoning isStreaming defaultOpen>
+                          <ReasoningTrigger />
+                          <ReasoningContent>
+                            Running tools and preparing a response.
+                          </ReasoningContent>
+                        </Reasoning>
+                      ) : message.status === "cancelled" ? (
+                        <span className="text-muted-foreground italic">
+                          Request cancelled
+                        </span>
+                      ) : (
+                        <>
+                          {message.role === "assistant" && parsedContent.thinking && (
+                            <Reasoning defaultOpen={false}>
+                              <ReasoningTrigger />
+                              <ReasoningContent>{parsedContent.thinking}</ReasoningContent>
+                            </Reasoning>
+                          )}
+                          <MessageResponse>{parsedContent.response}</MessageResponse>
+                        </>
+                      )}
+                    </MessageContent>
+                    {message.role === "assistant" &&
+                      message.status === "completed" &&
+                      messageIndex === (conversationMessages?.length ?? 0) - 1 && (
+                        <MessageActions>
+                          <MessageAction
+                            onClick={() => {
+                              navigator.clipboard.writeText(message.content)
+                            }}
+                            label="Copy"
+                          >
+                            <CopyIcon className="size-3" />
+                          </MessageAction>
+                        </MessageActions>
+                      )
+                    }
+                  </Message>
+                );
+              })()
             ))}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
         <div className="p-3">
-          <PromptInput 
+          <PromptInput
             onSubmit={handleSubmit}
             className="mt-2"
           >

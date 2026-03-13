@@ -63,7 +63,7 @@ export const NewProjectDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
+      <DialogContent
         showCloseButton={false}
         className="sm:max-w-lg p-0"
       >
@@ -83,8 +83,8 @@ export const NewProjectDialog = ({
             />
           </PromptInputBody>
           <PromptInputFooter>
-             <PromptInputTools />
-             <PromptInputSubmit disabled={!input || isSubmitting} />
+            <PromptInputTools />
+            <PromptInputSubmit disabled={!input || isSubmitting} />
           </PromptInputFooter>
         </PromptInput>
       </DialogContent>

@@ -18,8 +18,8 @@ interface Props {
   onChange: (value: string) => void;
 }
 
-export const CodeEditor = ({ 
-  fileName, 
+export const CodeEditor = ({
+  fileName,
   initialValue = "",
   onChange
 }: Props) => {
@@ -41,7 +41,7 @@ export const CodeEditor = ({
         customTheme,
         customSetup,
         languageExtension,
-        suggestion(fileName),
+        // suggestion(fileName), // Disabled to prevent automatic AI requests
         quickEdit(fileName),
         selectionTooltip(),
         keymap.of([indentWithTab]),

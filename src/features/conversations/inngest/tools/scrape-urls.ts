@@ -30,9 +30,11 @@ export const createScrapeUrlsTool = () => {
 
           for (const url of urls) {
             try {
-              const result = await firecrawl.scrape(url, {
-                formats: ["markdown"],
-              });
+              const result = firecrawl
+                ? await firecrawl.scrape(url, {
+                  formats: ["markdown"],
+                })
+                : { markdown: null };
 
               if (result.markdown) {
                 results.push({

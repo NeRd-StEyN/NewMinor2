@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 import { inngest } from "./client";
-import { anthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
 import { firecrawl } from "@/lib/firecrawl";
 
 const URL_REGEX = /https?:\/\/[^\s]+/g;
@@ -18,10 +18,12 @@ export const demoGenerate = inngest.createFunction(
     const scrapedContent = await step.run("scrape-urls", async () => {
       const results = await Promise.all(
         urls.map(async (url) => {
-          const result = await firecrawl.scrape(
-            url,
-            { formats: ["markdown"] },
-          );
+          const result = firecrawl
+            ? await firecrawl.scrape(
+              url,
+              { formats: ["markdown"] },
+            )
+            : { markdown: null };
           return result.markdown ?? null;
         })
       );
@@ -33,8 +35,13 @@ export const demoGenerate = inngest.createFunction(
       : prompt;
 
     await step.run("generate-text", async () => {
+      const groq = createOpenAI({
+        apiKey: process.env.GROQ_API_KEY,
+        baseURL: "https://api.groq.com/openai/v1",
+      });
+
       return await generateText({
-        model: anthropic('claude-3-haiku-20240307'),
+        model: groq('llama-3.1-8b-instant'),
         prompt: finalPrompt,
         experimental_telemetry: {
           isEnabled: true,

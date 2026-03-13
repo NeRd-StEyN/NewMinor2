@@ -7,6 +7,7 @@ import {
   TerminalSquareIcon,
   AlertTriangleIcon,
   RefreshCwIcon,
+  RotateCcwIcon,
 } from "lucide-react";
 
 import { useWebContainer } from "@/features/preview/hooks/use-webcontainer";
@@ -22,6 +23,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 export const PreviewView = ({ projectId }: { projectId: Id<"projects"> }) => {
   const project = useProject(projectId);
   const [showTerminal, setShowTerminal] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const {
     status, previewUrl, error, restart, terminalOutput
@@ -45,6 +47,17 @@ export const PreviewView = ({ projectId }: { projectId: Id<"projects"> }) => {
           title="Restart container"
         >
           <RefreshCwIcon className="size-3" />
+        </Button>
+
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-full rounded-none border-r"
+          disabled={!previewUrl}
+          onClick={() => setRefreshKey((k) => k + 1)}
+          title="Refresh page"
+        >
+          <RotateCcwIcon className="size-3" />
         </Button>
 
         <div className="flex-1 h-full flex items-center px-3 bg-background border-x text-xs text-muted-foreground truncate font-mono">
@@ -99,8 +112,24 @@ export const PreviewView = ({ projectId }: { projectId: Id<"projects"> }) => {
               </div>
             )}
 
+            {!isLoading && !previewUrl && !error && (
+              <div className="size-full flex items-center justify-center text-muted-foreground">
+                <div className="flex flex-col items-center gap-2 max-w-md mx-auto text-center p-4">
+                  <div className="bg-muted p-4 rounded-full mb-2">
+                    <TerminalSquareIcon className="size-8 opacity-50" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground">Ready to Build</h3>
+                  <p className="text-sm">
+                    This project is currently empty or has no runnable files.
+                    Ask the AI to create a project, or add an <strong>index.html</strong> to get started.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {previewUrl && (
               <iframe
+                key={refreshKey}
                 src={previewUrl}
                 className="size-full border-0"
                 title="Preview"

@@ -139,7 +139,7 @@ export const Navbar = ({
             </TooltipTrigger>
             <TooltipContent>
               Saved{" "}
-              {project?.updatedAt 
+              {project?.updatedAt
                 ? formatDistanceToNow(
                   project.updatedAt,
                   { addSuffix: true, }
